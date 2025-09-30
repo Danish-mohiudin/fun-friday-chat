@@ -1,0 +1,16 @@
+[
+  {
+    "id": "acbe84ec-21ef-44e4-9322-35f451808564",
+    "username": "danish",
+    "password": "$2a$10$hPFQZv9x2aKl9tNXx891XujsoL5ENGnjqLvAWnvwagiMt8EkzXOFi",
+    "email": "danish@gmail.com",
+    "created_at": "2025-09-30T04:05:12.717Z"
+  },
+  {
+    "id": "8fbbe124-0179-43b2-9ae6-71cffd4689c1",
+    "username": "faisal",
+    "password": "$2a$10$0Bl4KhcmAiPZ44RV7BawYe4A9YTZlSEw0gwAVUkEkTyAudHAvHx.O",
+    "email": "faisal",
+    "created_at": "2025-09-30T04:06:19.219Z"
+  }
+]

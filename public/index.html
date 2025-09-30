@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Fun Friday Group Chat — Demo</title>
+  <style>
+    /* FULL CSS (compact but visually same) */
+    *{box-sizing:border-box}
+    body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; margin:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);height:100vh;display:flex;align-items:center;justify-content:center;}
+    .app-container{width:100%;max-width:1100px;height:86vh;background:#fff;border-radius:14px;display:flex;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.18)}
+    .left{width:380px;border-right:1px solid #eee;display:flex;flex-direction:column}
+    .header{background:linear-gradient(135deg,#8B5CF6 0%,#EC4899 100%);padding:16px;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    .group-info{display:flex;gap:12px;align-items:center}
+    .group-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(45deg,#3B82F6,#06B6D4);font-weight:700}
+    .group-name{font-weight:700}
+    .connection-status{padding:10px;text-align:center;background:#f0f9ff;color:#1e40af;font-size:13px}
+    .chat-container{flex:1;padding:16px;background:#f5f5f7;overflow:auto}
+    .loading-indicator{display:flex;align-items:center;justify-content:center;padding:14px;color:#666}
+    .spinner{width:18px;height:18px;border:2px solid #e5e7eb;border-top:2px solid #8B5CF6;border-radius:50%;animation:spin 1s linear infinite;margin-right:8px}
+    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+    .message{display:flex;gap:8px;margin-bottom:12px;align-items:flex-start}
+    .message.own{justify-content:flex-end}
+    .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(45deg,#6366F1,#8B5CF6);color:#fff;font-weight:700}
+    .message-bubble{max-width:75%;background:#fff;padding:10px;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+    .message.own .message-bubble{background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff}
+    .message-header{font-size:12px;color:#666;margin-bottom:4px}
+    .message-time{font-size:11px;color:#999;margin-top:6px;text-align:right}
+    .input-area{padding:12px;border-top:1px solid #eee;background:#fff;display:flex;gap:8px;align-items:center}
+    .input-wrapper{flex:1;background:#f3f4f6;border-radius:24px;padding:8px 12px;display:flex;gap:8px;align-items:center}
+    .message-input{border:none;background:transparent;outline:none;width:100%}
+    .send-btn{width:44px;height:44px;border-radius:50%;border:none;background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff;font-weight:700;cursor:pointer}
+    .toggle-switch{position:relative;width:40px;height:20px;background:#ccc;border-radius:20px;cursor:pointer}
+    .toggle-switch.active{background:#8B5CF6}
+    .toggle-slider{position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .25s}
+    .toggle-switch.active .toggle-slider{transform:translateX(20px)}
+    .top-actions{display:flex;gap:8px;align-items:center}
+    .auth-row{display:flex;gap:8px;align-items:center}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.2)}
+    .btn.primary{background:#fff;color:#111}
+    .right{flex:1;display:flex;flex-direction:column}
+    .desktop-header{padding:16px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
+    .welcome{padding:20px;text-align:center;color:#111}
+    .small-muted{font-size:13px;color:#6b7280}
+    .ticks{font-size:13px;margin-left:6px;color:rgba(0,0,0,.5)}
+    .tick-delivered{color:rgba(255,255,255,.85)}
+    .status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;background:#10b981}
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <div class="left">
+    <div class="header">
+      <div class="group-info">
+        <div class="group-avatar">FF</div>
+        <div>
+          <div class="group-name">Fun Friday Group</div>
+          <div id="groupStatus" class="small-muted">Loading...</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="auth-row" id="authRow">
+          <button class="btn ghost" id="signupBtn">Sign up</button>
+          <button class="btn ghost" id="loginBtn">Log in</button>
+        </div>
+        <div style="display:none" id="loggedInRow">
+          <span id="usernameDisplay" style="color:#fff;margin-right:8px"></span>
+          <button class="btn primary" id="logoutBtn">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="connectionStatus" class="connection-status">Connecting...</div>
+
+    <div id="chatContainer" class="chat-container">
+      <div id="loadingMessages" class="loading-indicator"><div class="spinner"></div>Loading...</div>
+    </div>
+
+    <div class="input-area">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:#fff">Anonymous</span>
+        <div class="toggle-switch active" id="anonymousToggle"><div class="toggle-slider"></div></div>
+      </div>
+      <div class="input-wrapper" style="flex:1">
+        <input id="messageInput" class="message-input" placeholder="Type a message..." maxlength="1000"/>
+      </div>
+      <button id="sendBtn" class="send-btn">▶</button>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="desktop-header">
+      <h2>Fun Friday Group Chat</h2>
+      <div class="small-muted">Real-time messaging • Delivery ticks demo</div>
+    </div>
+
+    <div class="welcome">
+      <h3 id="welcomeText">Welcome 👋</h3>
+      <p class="small-muted">please Login or signup to view or send the messages <code>data/</code>...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Simple modals for login / signup -->
+<div id="modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:999">
+  <div style="background:#fff;padding:22px;border-radius:12px;min-width:320px">
+    <h3 id="modalTitle">Login</h3>
+    <div id="modalError" style="color:#dc2626;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <input id="mUsername" placeholder="username" />
+      <input id="mEmail" placeholder="email (signup only)" style="display:none"/>
+      <input id="mPassword" type="password" placeholder="password" />
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+        <button id="modalCancel" class="btn">Cancel</button>
+        <button id="modalSubmit" class="btn primary">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+let token = localStorage.getItem('authToken') || null;
+let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+let ws = null;
+let isConnected = false;
+let isAnonymous = true;
+const renderedMessageIds = new Set();
+
+// UI refs
+const signupBtn = document.getElementById('signupBtn');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const authRow = document.getElementById('authRow');
+const loggedInRow = document.getElementById('loggedInRow');
+const usernameDisplay = document.getElementById('usernameDisplay');
+const connectionStatus = document.getElementById('connectionStatus');
+const chatContainer = document.getElementById('chatContainer');
+const loadingMessages = document.getElementById('loadingMessages');
+const sendBtn = document.getElementById('sendBtn');
+const messageInput = document.getElementById('messageInput');
+const anonymousToggle = document.getElementById('anonymousToggle');
+const groupStatus = document.getElementById('groupStatus');
+
+// modal refs
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalError = document.getElementById('modalError');
+const mUsername = document.getElementById('mUsername');
+const mEmail = document.getElementById('mEmail');
+const mPassword = document.getElementById('mPassword');
+const modalSubmit = document.getElementById('modalSubmit');
+const modalCancel = document.getElementById('modalCancel');
+
+function setAuthUI() {
+  if (token && currentUser && currentUser.username) {
+    authRow.style.display = 'none';
+    loggedInRow.style.display = 'flex';
+    usernameDisplay.textContent = currentUser.username;
+    document.getElementById('welcomeText').textContent = `Welcome, ${currentUser.username}!`;
+  } else {
+    authRow.style.display = 'flex';
+    loggedInRow.style.display = 'none';
+    usernameDisplay.textContent = '';
+    document.getElementById('welcomeText').textContent = `Welcome!`;
+  }
+}
+
+function showModal(mode='login') {
+  modal.style.display = 'flex';
+  modalError.style.display = 'none';
+  mUsername.value = '';
+  mPassword.value = '';
+  mEmail.value = '';
+  mEmail.style.display = mode === 'signup' ? 'block' : 'none';
+  modalTitle.textContent = mode === 'signup' ? 'Sign up' : 'Login';
+  modalSubmit.dataset.mode = mode;
+}
+
+function hideModal() { modal.style.display = 'none'; }
+
+function showError(msg) { modalError.style.display='block'; modalError.textContent=msg; }
+
+function formatTime(iso) { const d=new Date(iso||Date.now()); return d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); }
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// add message with duplicate prevention
+function addMessageToDOM(msg, isOwn=false, showTick=false) {
+  if(renderedMessageIds.has(msg.id)) return;
+  renderedMessageIds.add(msg.id);
+
+  loadingMessages.style.display='none';
+  const wrap=document.createElement('div');
+  wrap.className='message'+(isOwn?' own':'');
+  const avatar=document.createElement('div');
+  avatar.className='avatar';
+  avatar.textContent=(msg.sender_name||'A').charAt(0).toUpperCase();
+  const bubble=document.createElement('div');
+  bubble.className='message-bubble';
+  bubble.innerHTML=`<div style="font-size:13px;font-weight:600">${escapeHtml(msg.sender_name || (isOwn ? (isAnonymous?'Anonymous':'You'):'Anonymous'))}</div>
+                      <div style="margin-top:6px">${escapeHtml(msg.content)}</div>
+                      <div class="message-time">${formatTime(msg.created_at)}
+                        <span class="ticks" data-msg-id="${msg.id}">${msg.delivered?' ✓✓':(showTick?' ✓':'')}</span>
+                      </div>`;
+  if(isOwn){ wrap.appendChild(bubble); } else { wrap.appendChild(avatar); wrap.appendChild(bubble); }
+  chatContainer.appendChild(wrap);
+  chatContainer.scrollTop=chatContainer.scrollHeight;
+}
+
+function updateTick(msgId){
+  const el=chatContainer.querySelector(`.ticks[data-msg-id="${msgId}"]`);
+  if(el){ el.innerText=' ✓✓'; el.classList.add('tick-delivered'); }
+}
+
+// ---------- API ----------
+async function api(path, opts={}) {
+  const headers=opts.headers||{};
+  if(token) headers['Authorization']='Bearer '+token;
+  const res=await fetch(API_BASE+path,{...opts,headers:{'Content-Type':'application/json',...headers}});
+  const text=await res.text();
+  try{ return {ok:res.ok,status:res.status,body:text?JSON.parse(text):null}; } catch(e){ return {ok:res.ok,status:res.status,body:text}; }
+}
+
+// load messages
+async function loadMessages(){
+  loadingMessages.style.display='flex';
+  const resp=await api('/api/messages',{method:'GET'});
+  if(resp.ok){
+    chatContainer.innerHTML=''; renderedMessageIds.clear();
+    const msgs=resp.body||[];
+    const dateDiv=document.createElement('div');
+    dateDiv.style.textAlign='center'; dateDiv.style.color='#666'; dateDiv.style.fontSize='12px'; dateDiv.style.margin='8px 0';
+    dateDiv.textContent=new Date().toLocaleDateString();
+    chatContainer.appendChild(dateDiv);
+    msgs.forEach(m=>{ const own=(currentUser&&m.user_id===currentUser.id); addMessageToDOM(m,own,false); });
+  } else { loadingMessages.innerHTML='❌ Could not load messages (login required?)'; }
+}
+
+async function loadStats() {
+  const resp=await api('/api/stats',{method:'GET'});
+  groupStatus.textContent=resp.ok?(resp.body&&resp.body.online_users)+' members online':'3 members online';
+}
+
+// ---------- WebSocket ----------
+function connectWebSocket() {
+  try{
+    const proto = location.protocol==='https:'?'wss:':'ws:';
+    const url = proto+'//'+location.host+(token?`/?token=${token}`:'/');
+    ws=new WebSocket(url);
+
+    ws.onopen=()=>{ isConnected=true; connectionStatus.textContent='🟢 Connected'; connectionStatus.classList.add('connected'); };
+
+    ws.onmessage=(evt)=>{
+      try{
+        const data=JSON.parse(evt.data);
+        if(data.type==='new_message'){
+          addMessageToDOM(data.message,(currentUser&&data.message.user_id===currentUser.id),true);
+        } else if(data.type==='message_delivered'){
+          updateTick(data.id);
+        }
+      } catch(e){}
+    };
+
+    ws.onclose=()=>{ isConnected=false; connectionStatus.textContent='🔴 Reconnecting...'; setTimeout(connectWebSocket,1500); };
+    ws.onerror=()=>{};
+  } catch(e){ console.error('ws err',e); }
+}
+
+// ---------- Actions ----------
+signupBtn.onclick = () => showModal('signup');
+loginBtn.onclick = () => showModal('login');
+logoutBtn.onclick = async () => {
+  if(!confirm('Logout?')) return;
+  token=null; currentUser=null;
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('user');
+  renderedMessageIds.clear();
+  setAuthUI();
+  try{ ws&&ws.close(); }catch{}
+  connectWebSocket();
+  loadMessages();
+  loadStats();
+};
+
+anonymousToggle.onclick=()=>{ isAnonymous=!isAnonymous; anonymousToggle.classList.toggle('active',isAnonymous); };
+
+modalCancel.onclick=hideModal;
+modalSubmit.onclick=async ()=>{
+  const mode=modalSubmit.dataset.mode;
+  const username=mUsername.value.trim();
+  const password=mPassword.value;
+  const email=mEmail.value.trim();
+  if(!username||!password) return showError('Username and password required');
+  modalError.style.display='none'; modalSubmit.disabled=true;
+  try{
+    const path=mode==='signup'?'/api/register':'/api/login';
+    const body=mode==='signup'?{username,password,email}:{username,password};
+    const resp=await api(path,{method:'POST',body:JSON.stringify(body)});
+    modalSubmit.disabled=false;
+    if(!resp.ok) return showError((resp.body&&resp.body.error)||'Error');
+    token=resp.body.token; currentUser=resp.body.user;
+    localStorage.setItem('authToken',token); localStorage.setItem('user',JSON.stringify(currentUser));
+    hideModal(); setAuthUI();
+    try{ ws&&ws.close(); }catch{}
+    connectWebSocket(); await loadMessages(); await loadStats();
+  } catch(e){ modalSubmit.disabled=false; showError('Network or server error'); }
+};
+
+sendBtn.onclick=async ()=>{
+  const text=messageInput.value.trim();
+  if(!text) return;
+  if(!token){ alert('You must login to send messages. Click Sign up / Log in.'); return; }
+  messageInput.value='';
+  try{
+    const resp=await api('/api/messages',{method:'POST',body:JSON.stringify({content:text,isAnonymous})});
+    if(!resp.ok){ alert('Failed to send message: '+((resp.body&&resp.body.error)||'Unknown')); return; }
+    addMessageToDOM(resp.body.message,true,true);
+  } catch(e){ console.error(e); alert('Network error while sending'); }
+};
+
+async function init(){
+  setAuthUI();
+  connectWebSocket();
+  if(token){ await loadMessages(); } else { loadingMessages.style.display='block'; loadingMessages.innerHTML='Please login or signup to view messages.'; }
+  await loadStats();
+}
+
+init();
+window._app={init,connectWebSocket,api};
+</script>
+</body>
+</html>
